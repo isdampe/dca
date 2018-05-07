@@ -11,11 +11,11 @@
 #include "algorithm.h"
 
 /**
-* Returns the inverse of x mod(y).
-* @param x Some integer X
-* @param y Some integer Y
-* @return The inverse of x mod(y)
-*/
+ * Returns the inverse of x mod(y).
+ * @param x Some integer X
+ * @param y Some integer Y
+ * @return The inverse of x mod(y)
+ */
 int inv_mod(int x, int y)
 {
 	int q, u, v, a, c, t;
@@ -38,18 +38,18 @@ int inv_mod(int x, int y)
 
 	a = a % y;
 	if (a < 0)
-	a = y + a;
+		a = y + a;
 
 	return a;
 }
 
 /**
-* Returns a XOR b mod(m)
-* @param a Some integer A
-* @param b Some integer B
-* @param m Some integer M
-* @return a XOR (b mod(m))
-*/
+ * Returns a XOR b mod(m)
+ * @param a Some integer A
+ * @param b Some integer B
+ * @param m Some integer M
+ * @return a XOR (b mod(m))
+ */
 int pow_mod(int a, int b, int m)
 {
 	int r, aa;
@@ -58,40 +58,40 @@ int pow_mod(int a, int b, int m)
 
 	while (1) {
 		if (b & 1)
-		r = mul_mod(r, aa, m);
+			r = mul_mod(r, aa, m);
 		b = b >> 1;
 		if (b == 0)
-		break;
+			break;
 		aa = mul_mod(aa, aa, m);
 	}
 	return r;
 }
 
 /**
-* Determines if a given integer is a prime number.
-* @param n Some integer N
-* @return True for prime numbers, otherwise false.
-*/
+ * Determines if a given integer is a prime number.
+ * @param n Some integer N
+ * @return True for prime numbers, otherwise false.
+ */
 bool is_prime(int n)
 {
 	int r, i;
 
 	if ((n % 2) == 0)
-	return false;
+		return false;
 
 	r = (int) (sqrt(n));
 	for (i = 3; i <= r; i += 2)
-	if ((n % i) == 0)
-	return false;
+		if ((n % i) == 0)
+			return false;
 
 	return true;
 }
 
 /**
-* Find the next prime number after some integer n.
-* @param n The integer to find a prime after.
-* @return The next prime number after n.
-*/
+ * Find the next prime number after some integer n.
+ * @param n The integer to find a prime after.
+ * @return The next prime number after n.
+ */
 int next_prime(int n)
 {
 	do {
@@ -101,10 +101,10 @@ int next_prime(int n)
 }
 
 /**
-* Finds the nth digit of Pi.
-* @param n The digit number to find.
-* @return The integer representation of the digit.
-*/
+ * Finds the nth digit of Pi.
+ * @param n The digit number to find.
+ * @return The integer representation of the digit.
+ */
 int get_nth_digit(unsigned int n)
 {
 	int av, a, vmax, N, num, den, k, kq, kq2, t, v, s, i, result;
@@ -155,10 +155,10 @@ int get_nth_digit(unsigned int n)
 				t = mul_mod(t, num, av);
 				t = mul_mod(t, k, av);
 				for (i = v; i < vmax; i++)
-				t = mul_mod(t, a, av);
+					t = mul_mod(t, a, av);
 				s += t;
 				if (s >= av)
-				s -= av;
+					s -= av;
 			}
 
 		}
@@ -169,6 +169,8 @@ int get_nth_digit(unsigned int n)
 	}
 
 	result = (int)(sum * 1e9);
+
+	//If result is less than 10x10^7, the first digit is always zero.
 	if (result < 10 * 10000000)
 		result = 0;
 	else
