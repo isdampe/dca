@@ -1,7 +1,7 @@
 #ifndef ALGORITHM_H
 #define ALGORITHM_H
-#include <math.h>
 #include <stdbool.h>
+#include <math.h>
 
 #define mul_mod(a, b, m) fmod((double)a * (double) b, m)
 

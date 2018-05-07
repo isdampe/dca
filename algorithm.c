@@ -169,8 +169,11 @@ int get_nth_digit(unsigned int n)
 	}
 
 	result = (int)(sum * 1e9);
-	while(result >= 10)
-		result = result / 10;
+	if (result < 10 * 10000000)
+		result = 0;
+	else
+		while(result >= 10)
+			result = result / 10;
 
 	return result;
 
