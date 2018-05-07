@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "algorithm.h"
+#include "../algorithm.h"
 
 int main()
 {
