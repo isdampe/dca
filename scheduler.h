@@ -5,8 +5,9 @@
 
 typedef struct {
 	uint8_t idx;
-	uint8_t addr;	
+	uint8_t addr;
 	volatile bool busy;
+	uint32_t i2c_handle;
 } slave;
 
 typedef struct {
