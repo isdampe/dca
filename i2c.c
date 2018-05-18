@@ -17,6 +17,12 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr)
 		strcpy(obj->device, device);
 
 	obj->addr = addr;
+	obj->reg[0] = 0x0;
+	obj->reg[1] = 0x0;
+	obj->reg[2] = 0x0;
+	obj->reg[3] = 0x0;
+	obj->reg[4] = 0x0;
+	obj->reg[5] = 0x0;
 
 	if ((obj->fh = open(obj->device, O_RDWR)) < 0)
 		return I2C_STATUS_ERR_OPEN;
@@ -28,17 +34,40 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr)
 
 }
 
-uint8_t i2c_read_byte(const i2c_obj *obj, const uint8_t register_num)
+I2C_STATUS i2c_read_reg(i2c_obj *obj)
 {
-	uint8_t result = 0;
-	char buf[8] = {0};
-	if (read(obj->fh, buf, 8) != 8)
-		perror("8 bits were not read.");
+	//Set register to read to 0x0.
+	obj->reg[0] = 0x0;
+	obj->reg[1] = 0x0;
+	if (write(obj->fh, obj->reg, 2) != 2)
+		return I2C_STATUS_ERR_WRITE_REG;
 
-	for (int i=0; i<8; ++i)
-		printf("The value is %i\n", buf[i]);
+	if (read(obj->fh, obj->reg, 6) != 6)
+		return I2C_STATUS_ERR_READ_REG;
 
-	return 0;
+	return I2C_STATUS_OK;
+}
+
+I2C_STATUS i2c_write_reg(i2c_obj *obj)
+{
+	//Set register select
+	obj->reg[0] = 0x0;
+	obj->reg[1] = 0x0;
+
+	//Write the data.
+	if (write(obj->fh, obj->reg, 6) != 6)
+    	return I2C_STATUS_ERR_WRITE_REG;
+
+	return I2C_STATUS_OK;
+}
+
+I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8_t val)
+{
+	if (byte_number > 4)
+		return I2C_STATUS_ERR_REG_OUT_OF_BOUNDS;
+
+	obj->reg[byte_number +1] = val;
+	return I2C_STATUS_OK;
 }
 
 const char *i2c_get_status_str(const I2C_STATUS status)
@@ -56,6 +85,15 @@ const char *i2c_get_status_str(const I2C_STATUS status)
 			break;
 		case I2C_STATUS_ERR_IOCTL:
 			return "Could not set slave IO control on device of specified address";
+			break;
+		case I2C_STATUS_ERR_REG_OUT_OF_BOUNDS:
+			return "The register specified was out of bounds";
+			break;
+		case I2C_STATUS_ERR_READ_REG:
+			return "There was an error reading from the specified register";
+			break;
+		case I2C_STATUS_ERR_WRITE_REG:
+			return "There was an error writing to the specified register";
 			break;
 		default:
 			return "Unknown status";
