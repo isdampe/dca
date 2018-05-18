@@ -39,6 +39,11 @@ I2C_STATUS i2c_read_reg(i2c_obj *obj)
 	//Set register to read to 0x0.
 	obj->reg[0] = 0x0;
 	obj->reg[1] = 0x0;
+	obj->reg[2] = 0x0;
+	obj->reg[3] = 0x0;
+	obj->reg[4] = 0x0;
+	obj->reg[5] = 0x0;
+	
 	if (write(obj->fh, obj->reg, 2) != 2)
 		return I2C_STATUS_ERR_WRITE_REG;
 
