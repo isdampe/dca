@@ -16,8 +16,18 @@ int main()
 	}
 
 	printf("Slave connected\n");
-	if (efp_ping(&slave, 500))
+
+	printf("Ping...\n");
+	if (efp_ping(&slave, 100)) //100ms timeout.
 		printf("Ping received!\n");
+	else
+		printf("Timeout\n");
+
+	printf("Order n=1, i.e. 5*1=1-5...\n");
+	if (efp_order(&slave, 1, 100))
+		printf("Order received!\n");
+	else
+		printf("Timeout\n");
 
 	return 0;
 }
