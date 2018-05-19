@@ -23,5 +23,7 @@ typedef enum
 static bool efp_wait_ack(i2c_obj *obj, const uint32_t timeout_ns);
 bool efp_ping(i2c_obj *obj, const uint32_t timeout_ms);
 bool efp_order(i2c_obj *obj, const uint8_t n_val, const uint32_t timeout_ms);
-
+bool efp_status(i2c_obj *obj, uint8_t *des, const uint32_t timeout_ms);
+bool efp_result_single(i2c_obj *obj, uint8_t *des, const uint8_t req_idx, const uint32_t timeout_ms);
+bool efp_result_range(i2c_obj *obj, uint8_t *des, uint8_t start_idx, const uint8_t end_idx, const uint32_t timeout_ms);
 #endif

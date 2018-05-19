@@ -29,5 +29,23 @@ int main()
 	else
 		printf("Timeout\n");
 
+	uint8_t result;
+	printf("Checking status...\n");
+	if (efp_status(&slave, &result, 100))
+		printf("Status is 0x%02x\n", result);
+	else
+	printf("Timeout");
+
+	uint8_t results[5];
+	printf("Fetching result group...\n");
+	if (efp_result_range(&slave, results, 1, 5, 100))
+	{
+		for (int i=0; i<5; ++i)
+			printf("Result %i: 0x%02x\n", i, results[i]);
+	} else
+		printf("Timeout fetching results group.\n");
+
+	i2c_close(&slave);
+
 	return 0;
 }
