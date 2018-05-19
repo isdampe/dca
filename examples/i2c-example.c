@@ -51,5 +51,7 @@ int main()
 		printf("%i: 0x%02x\n", i, slave.reg[i]);
 	}
 
+	i2c_close(&slave);
+
 	return 0;
 }

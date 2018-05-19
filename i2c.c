@@ -43,7 +43,6 @@ I2C_STATUS i2c_read_reg(i2c_obj *obj)
 	obj->reg[3] = 0x0;
 	obj->reg[4] = 0x0;
 	obj->reg[5] = 0x0;
-	
 	if (write(obj->fh, obj->reg, 2) != 2)
 		return I2C_STATUS_ERR_WRITE_REG;
 
@@ -73,6 +72,11 @@ I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8
 
 	obj->reg[byte_number +1] = val;
 	return I2C_STATUS_OK;
+}
+
+void i2c_close(i2c_obj *obj)
+{
+	close(obj->fh);
 }
 
 const char *i2c_get_status_str(const I2C_STATUS status)
