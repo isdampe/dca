@@ -7,5 +7,5 @@ fi
 while true
 do
 	sudo screen /dev/$1
-	sleep 10
+	sleep 5
 done
