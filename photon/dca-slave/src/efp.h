@@ -10,7 +10,7 @@
 #define EFP_SLAVE_ADDR 0x10
 #define EFP_SLAVE_REGISTERS 0x2
 
-#define EFP_JOB_FACTOR 0x10
+#define EFP_JOB_FACTOR 0x5
 
 #define EFP_ACK_OK 0x1
 #define EFP_ACK_ERR 0x2
@@ -46,6 +46,9 @@ void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave, uint8_t
 void efp_dump_registers(const efp_slave *slave);
 uint32_t efp_pack_registers(const efp_slave *slave);
 void efp_set_ack(efp_slave *slave, const uint8_t value);
-uint8_t efp_get_register_byte(const efp_slave *slave, uint8_t index);
+uint8_t efp_get_register_byte(const efp_slave *slave, const uint8_t index);
+void efp_set_register_byte(efp_slave *slave, const uint8_t index, const uint8_t val);
+void efp_set_job(efp_slave *slave, const uint8_t start_idx);
+void efp_set_done(efp_slave *slave);
 
 #endif
