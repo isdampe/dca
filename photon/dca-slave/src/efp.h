@@ -12,6 +12,9 @@
 
 #define EFP_JOB_FACTOR 0x10
 
+#define EFP_ACK_OK 0x1
+#define EFP_ACK_ERR 0x2
+
 typedef enum
 {
 	EFP_CMD_PING = 0x0,
@@ -42,5 +45,7 @@ void efp_slave_init(efp_slave *slave);
 void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave, uint8_t reg_addr);
 void efp_dump_registers(const efp_slave *slave);
 uint32_t efp_pack_registers(const efp_slave *slave);
+void efp_set_ack(efp_slave *slave, const uint8_t value);
+uint8_t efp_get_register_byte(const efp_slave *slave, uint8_t index);
 
 #endif
