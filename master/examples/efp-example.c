@@ -45,6 +45,12 @@ int main()
 	} else
 		printf("Timeout fetching results group.\n");
 
+	printf("Cancelling...\n");
+	if (efp_cancel(&slave, 100))
+		printf("Cancelled!\n");
+	else
+		printf("Timeout cancelling\n");
+
 	i2c_close(&slave);
 
 	return 0;

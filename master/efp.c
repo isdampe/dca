@@ -89,3 +89,15 @@ bool efp_result_range(i2c_obj *obj, uint8_t *des, uint8_t start_idx, const uint8
 		++i;
 	} while (++start_idx <= end_idx);
 }
+
+bool efp_cancel(i2c_obj *obj, const uint32_t timeout_ms)
+{
+	i2c_set_reg_data(obj, EFP_CMD_REGISTER_BYTE, EFP_CMD_CANCEL);
+	i2c_set_reg_data(obj, EFP_CMD_REGISTER_SLAVE_ACK_BYTE, 0x0);
+	i2c_set_reg_data(obj, EFP_CMD_REGISTER_DATA_BYTE, 0x0);
+
+	if (i2c_write_reg(obj) != I2C_STATUS_OK)
+		return false;
+
+	return efp_wait_ack(obj, timeout_ms * 1000000);
+}
