@@ -91,3 +91,10 @@ void efp_set_done(efp_slave *slave)
 	slave->mode = EFP_MODE_DONE;
 	os_mutex_unlock(register_lock);
 }
+
+void efp_set_idle(efp_slave *slave)
+{
+	os_mutex_lock(register_lock);
+	slave->mode = EFP_MODE_IDLE;
+	os_mutex_unlock(register_lock);
+}

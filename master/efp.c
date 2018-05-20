@@ -14,7 +14,7 @@ static bool efp_wait_ack(i2c_obj *obj, const uint32_t timeout_ns)
 	while (obj->reg[EFP_CMD_REGISTER_SLAVE_ACK_BYTE -1] == 0x0)
 	{
 		i2c_read_reg(obj);
-
+		
 		clock_gettime(CLOCK_REALTIME, &time_current);
 		if ((time_current.tv_nsec - time_begin.tv_nsec) > timeout_ns)
 			return false;
@@ -90,9 +90,9 @@ bool efp_result_range(i2c_obj *obj, uint8_t *des, uint8_t start_idx, const uint8
 	} while (++start_idx <= end_idx);
 }
 
-bool efp_cancel(i2c_obj *obj, const uint32_t timeout_ms)
+bool efp_reset(i2c_obj *obj, const uint32_t timeout_ms)
 {
-	i2c_set_reg_data(obj, EFP_CMD_REGISTER_BYTE, EFP_CMD_CANCEL);
+	i2c_set_reg_data(obj, EFP_CMD_REGISTER_BYTE, EFP_CMD_RESET);
 	i2c_set_reg_data(obj, EFP_CMD_REGISTER_SLAVE_ACK_BYTE, 0x0);
 	i2c_set_reg_data(obj, EFP_CMD_REGISTER_DATA_BYTE, 0x0);
 

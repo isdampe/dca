@@ -21,7 +21,7 @@ typedef enum
 	EFP_CMD_ORDER = 0x1,
 	EFP_CMD_STATUS = 0x2,
 	EFP_CMD_RESULT = 0x3,
-	EFP_CMD_CANCEL = 0x4
+	EFP_CMD_RESET = 0x4
 } EFP_CMD;
 
 typedef enum
@@ -50,5 +50,6 @@ uint8_t efp_get_register_byte(const efp_slave *slave, const uint8_t index);
 void efp_set_register_byte(efp_slave *slave, const uint8_t index, const uint8_t val);
 void efp_set_job(efp_slave *slave, const uint8_t start_idx);
 void efp_set_done(efp_slave *slave);
+void efp_set_idle(efp_slave *slave);
 
 #endif

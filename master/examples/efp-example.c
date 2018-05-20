@@ -23,21 +23,22 @@ int main()
 	else
 		printf("Timeout\n");
 
-	printf("Order n=1, i.e. 5*1=1-5...\n");
-	if (efp_order(&slave, 1, 100))
+	printf("Order n=100, i.e. 5*100=500-505...\n");
+	if (efp_order(&slave, 6, 100))
 		printf("Order received!\n");
 	else
 		printf("Timeout\n");
 
 	uint8_t result;
 	printf("Checking status...\n");
-	if (efp_status(&slave, &result, 100))
+	if (efp_status(&slave, &result, 5000))
 		printf("Status is 0x%02x\n", result);
 	else
-	printf("Timeout");
+		printf("Timeout");
 
+	usleep(5000000);
 	uint8_t results[5];
-	printf("Fetching result group...\n");
+	printf("Fetching result group, waiting 45 seconds......\n");
 	if (efp_result_range(&slave, results, 1, 5, 100))
 	{
 		for (int i=0; i<5; ++i)
@@ -45,11 +46,11 @@ int main()
 	} else
 		printf("Timeout fetching results group.\n");
 
-	printf("Cancelling...\n");
-	if (efp_cancel(&slave, 100))
-		printf("Cancelled!\n");
+	printf("Resetting...\n");
+	if (efp_reset(&slave, 100))
+		printf("Reset!\n");
 	else
-		printf("Timeout cancelling\n");
+		printf("Timeout resetting\n");
 
 	i2c_close(&slave);
 
