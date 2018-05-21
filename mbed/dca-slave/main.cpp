@@ -1,11 +1,10 @@
-#include <mbed.h>
+#include "mbed.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "mbed.h"
 #include <cmath>
 #include <stdbool.h>
-#include "rtos.h"
+//#include "rtos.h"
 
 #define mul_mod(a, b, m) fmod((double)a * (double) b, m)
 
@@ -48,12 +47,14 @@ typedef struct
     char registers[6];
 } efp_slave;
 
-static Mutex register_lock;
+
+//static Mutex register_lock;
+Thread compute_thread;
 
 void efp_slave_init(efp_slave *slave)
 {
 
-    register_lock.lock();
+    ////register_lock.lock();
     slave->mode = EFP_MODE_IDLE;
     slave->current_job_start_idx = 0x0;
     slave->current_job_progress = 0x0;
@@ -64,25 +65,25 @@ void efp_slave_init(efp_slave *slave)
     for (uint8_t i=0; i<4; ++i)
         slave->registers[i] = 0x0;
 
-    register_lock.unlock();
+    ////register_lock.unlock();
 }
 
 
 void efp_dump_registers(const efp_slave *slave)
 {
-    register_lock.lock();
+    //register_lock.lock();
     for (uint8_t i=0x0; i<0x4; ++i)
         printf("Reg %i: 0x%02x\r\n", i, slave->registers[i]);
-    register_lock.unlock();
+    //register_lock.unlock();
     printf("\r\n");
 }
 
 void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave, uint8_t reg_addr)
 {
-    register_lock.lock();
+    //register_lock.lock();
     for (uint8_t i=0x0; i<0x4; ++i)
         slave->registers[i] = (reg_val >> (i * 8) & 0xff);
-    register_lock.unlock();
+    //register_lock.unlock();
     
     efp_dump_registers(slave);
 }
@@ -91,60 +92,60 @@ void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave, uint8_t
 uint32_t efp_pack_registers(const efp_slave *slave)
 {
     uint32_t result = 0x0;
-    register_lock.lock();
+    //register_lock.lock();
     for (int8_t i=0x3; i>=0; --i)
         result = (result << 8) | slave->registers[i];
-    register_lock.unlock();
+    //register_lock.unlock();
     return result;
 }
 
 void efp_set_ack(efp_slave *slave, const uint8_t value)
 {
-    register_lock.lock();
+    //register_lock.lock();
     slave->registers[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = value;
-    register_lock.unlock();
+    //register_lock.unlock();
 }
 
 uint8_t efp_get_register_byte(const efp_slave *slave, const uint8_t index)
 {
     uint8_t result;
-    register_lock.lock();
+    //register_lock.lock();
     result = slave->registers[index];
-    register_lock.unlock();
+    //register_lock.unlock();
 
     return result;
 }
 
 void efp_set_register_byte(efp_slave *slave, const uint8_t index, const uint8_t val)
 {
-    register_lock.lock();
+    //register_lock.lock();
     slave->registers[index] = val;
-    register_lock.unlock();
+    //register_lock.unlock();
 }
 
 void efp_set_job(efp_slave *slave, const uint8_t start_idx)
 {
-    register_lock.lock();
+    //register_lock.lock();
     slave->current_job_start_idx = start_idx;
     slave->current_job_progress = 0x0;
     for (uint8_t i=0; i<EFP_JOB_FACTOR; ++i)
         slave->current_job_results[i] = 0x0;
     slave->mode = EFP_MODE_WORK;
-    register_lock.unlock();
+    //register_lock.unlock();
 }
 
 void efp_set_done(efp_slave *slave)
 {
-    register_lock.lock();
+    //register_lock.lock();
     slave->mode = EFP_MODE_DONE;
-    register_lock.unlock();
+    //register_lock.unlock();
 }
 
 void efp_set_idle(efp_slave *slave)
 {
-    register_lock.lock();
+    //register_lock.lock();
     slave->mode = EFP_MODE_IDLE;
-    register_lock.unlock();
+    //register_lock.unlock();
 }
 
 
@@ -323,6 +324,43 @@ I2CSlave slave(p9, p10);
 static efp_slave slave_efp;
 
 
+void compute()
+{
+    while (1)
+    {
+        if (slave_efp.mode != EFP_MODE_WORK)
+        {
+            //printf("Waiting for work...\r\n");
+            Thread::wait(50);
+            //delay(50);
+            //os_thread_yield();
+            continue;
+        }
+
+        int start = slave_efp.current_job_start_idx * EFP_JOB_FACTOR +1;
+        int end = start + (EFP_JOB_FACTOR -1);
+        int n = start;
+        printf("Computing %i to %i\r\n", start, end);
+        //Thread::wait(500);
+        
+        for (slave_efp.current_job_progress=0; n<=end; ++slave_efp.current_job_progress)
+        {
+            slave_efp.current_job_results[slave_efp.current_job_progress] = get_nth_digit(n++);
+            //os_thread_yield();
+            //printf("Result: %u\r\n", slave_efp.current_job_results[slave_efp.current_job_progress]);
+        }
+
+        
+        slave_efp.mode = EFP_MODE_DONE;
+        printf("Digit computation done.\r\n");
+        for (int x=0; x<EFP_JOB_FACTOR; ++x)
+            printf("%i", slave_efp.current_job_results[x]);
+        printf("\r\n");
+        //os_thread_yield();
+
+    }
+}
+
 int main() {
     char input_buffer[6];
     char r1[6];
@@ -334,6 +372,8 @@ int main() {
     r1[3] = 0x00;
     r1[4] = 0x00;
     r1[5] = 0x00;
+    
+    compute_thread.start(compute);
     
    // printf("The 5th digit is %i\r\n", get_nth_digit(5));
    
@@ -360,7 +400,7 @@ int main() {
                for (int i=0; i<6; ++i) {
                     //slave_efp.registers[i] = input_buffer[i];
                     r1[i] = input_buffer[i];
-                    printf("Reg %i: Byte: 0x%02x\r\n\r\n", i, r1[i]);
+                    //printf("Reg %i: Byte: 0x%02x\r\n\r\n", i, r1[i]);
                }
                
                printf("Command received from master!\r\n");
@@ -378,7 +418,6 @@ int main() {
                     {
                         printf("Cannot accept work, not in idle mode.\r\n");
                         r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_ERR;
-                        //efp_set_ack(&slave, EFP_ACK_ERR);
                     } 
                     else
                     {
@@ -394,9 +433,47 @@ int main() {
                 break;
                 case EFP_CMD_STATUS:
                     printf("Check status\r\n");
-                    //efp_set_register_byte(&slave, EFP_CMD_REGISTER_DATA_BYTE, slave.current_job_progress);
-                    r1[EFP_CMD_REGISTER_DATA_BYTE +1] = slave_efp.current_job_progress;
+                    r1[EFP_CMD_REGISTER_DATA_BYTE] = slave_efp.current_job_progress;
                     r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_OK;
+                break;
+                case EFP_CMD_RESULT:
+                    printf("Request result\r\n");
+                    if (slave_efp.mode != EFP_MODE_DONE)
+                    {
+                        printf("Cannot give results while still computing\r\n");
+                        r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_ERR;
+                    } 
+                    else
+                    {
+                        uint8_t idxRequested = r1[EFP_CMD_REGISTER_DATA_BYTE + 2];
+                        if (idxRequested > EFP_JOB_FACTOR || idxRequested <= 0)
+                        {
+                            printf("The requested result index is greater than EFP job factor. No buffer overflows here!\r\n");
+                            r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_ERR;
+                        }
+                        else
+                        {
+                            r1[EFP_CMD_REGISTER_DATA_BYTE] = slave_efp.current_job_results[idxRequested -1];
+                            r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_OK;
+                            //efp_set_register_byte(&slave, EFP_CMD_REGISTER_DATA_BYTE, slave.current_job_results[idxRequested -1]);
+                            //efp_set_ack(&slave, EFP_ACK_OK);
+                        }
+                    }
+                    
+                break;
+                case EFP_CMD_RESET:
+                    printf("Reset\r\n");
+                    if (slave_efp.mode != EFP_MODE_DONE)
+                    {
+                        printf("Can only reset when done\r\n");
+                        r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_ERR;
+                    }
+                    else
+                    {
+                        r1[EFP_CMD_REGISTER_SLAVE_ACK_BYTE] = EFP_ACK_OK;
+                    }
+                    slave_efp.mode = EFP_MODE_IDLE;
+        
                 break;
                }
 
@@ -406,121 +483,3 @@ int main() {
        for(int i = 0; i < 10; i++) input_buffer[i] = 0;    // Clear buffer
    }
 }
-
-/*
-#include <stdint.h>
-#include "I2CSlaveRK.h"
-#include "algorithm.h"
-#include "efp.h"
-
-static I2CSlave device(Wire, EFP_SLAVE_ADDR, EFP_SLAVE_REGISTERS);
-
-SYSTEM_THREAD(ENABLED);
-static Thread *compute_thread;
-
-void setup()
-{
-    efp_slave_init(&slave);
-    Serial.begin(9600);
-    device.begin();
-
-    compute_thread = new Thread("compute_thread", compute);
-}
-
-void loop()
-{
-    //If the master hasn't updated the I2C register, do nothing.
-    if(! device.getRegisterSet(slave.reg_val))
-        return;
-    
-    efp_slave_parse_registers(device.getRegister(slave.reg_val), &slave, 0x0);
-    Serial.printf("Command received from master: ");
-    switch (efp_get_register_byte(&slave, EFP_CMD_REGISTER_BYTE))
-    {
-        case EFP_CMD_PING:
-            Serial.printlnf("Ping");
-            efp_set_ack(&slave, EFP_ACK_OK);
-            device.setRegister(0x0, efp_pack_registers(&slave));
-        break;
-        
-
-        case EFP_CMD_RESULT:
-            Serial.printlnf("Request result");
-            if (slave.mode != EFP_MODE_DONE)
-            {
-                Serial.printlnf("Cannot give results while still computing");
-                efp_set_ack(&slave, EFP_ACK_ERR);
-            } 
-            else
-            {
-                uint8_t idxRequested = efp_get_register_byte(&slave, EFP_CMD_REGISTER_DATA_BYTE);
-                if (idxRequested > EFP_JOB_FACTOR || idxRequested <= 0)
-                {
-                    Serial.printlnf("The requested result index is greater than EFP job factor. No buffer overflows here!");
-                    efp_set_ack(&slave, EFP_ACK_ERR);
-                }
-                else
-                {
-                    efp_set_register_byte(&slave, EFP_CMD_REGISTER_DATA_BYTE, slave.current_job_results[idxRequested -1]);
-                    efp_set_ack(&slave, EFP_ACK_OK);
-                }
-            }
-            device.setRegister(0x0, efp_pack_registers(&slave));
-            
-        break;
-        case EFP_CMD_RESET:
-            Serial.printlnf("Reset");
-            if (slave.mode != EFP_MODE_DONE)
-            {
-                Serial.printlnf("Can only reset when done");
-                efp_set_ack(&slave, EFP_ACK_ERR);
-            }
-            else
-            {
-                efp_set_ack(&slave, EFP_ACK_OK);
-            }
-            efp_set_idle(&slave);
-            device.setRegister(0x0, efp_pack_registers(&slave));
-
-        break;
-        default:
-            Serial.printlnf("Unknown command byte received: 0x%02x", slave.registers[EFP_CMD_REGISTER_BYTE]);
-        break;
-    }
-    
-    //Serial.printlnf("Some number: 0x%08x", efp_pack_registers(&slave));
-    
-}
-
-void compute()
-{
-    while (1)
-    {
-        if (slave.mode != EFP_MODE_WORK)
-        {
-            //Serial.printlnf("Waiting for work...");
-            //delay(50);
-            os_thread_yield();
-            continue;
-        }
-
-        int start = slave.current_job_start_idx * EFP_JOB_FACTOR +1;
-        int end = start + (EFP_JOB_FACTOR -1);
-        int n = start;
-        Serial.printlnf("Computing %i to %i", start, end);
-        
-        for (slave.current_job_progress=0; n<=end; ++slave.current_job_progress)
-        {
-            slave.current_job_results[slave.current_job_progress] = get_nth_digit(n++);
-            os_thread_yield();
-        }
-
-        efp_set_done(&slave);
-        Serial.printlnf("Digit computation done.");
-        for (uint8_t x=0; x<EFP_JOB_FACTOR; ++x)
-            Serial.printf("%i", slave.current_job_results[x]);
-        Serial.printf("\n");
-        os_thread_yield();
-
-    }
-}*/

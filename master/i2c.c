@@ -56,10 +56,10 @@ I2C_STATUS i2c_read_reg(i2c_obj *obj)
 	if (read(obj->fh, obj->reg, 6) != 6)
 		return I2C_STATUS_ERR_READ_REG;
 
-	for (int i=0; i<6; ++i)
-		printf("Reg %i: 0x%02x\n\n", i, obj->reg[i]);
+	//for (int i=0; i<6; ++i)
+	//	printf("Reg %i: 0x%02x\n\n", i, obj->reg[i]);
 
-	printf("\n");
+	//printf("\n");
 
 	return I2C_STATUS_OK;
 }
@@ -76,7 +76,7 @@ I2C_STATUS i2c_write_reg(i2c_obj *obj)
 
 	//mBed is slow
 	if (obj->hw_type == I2C_HW_MBED)
-		usleep(2500000);
+		usleep(250000); //Update one zero if trouble...
 
 	return I2C_STATUS_OK;
 }

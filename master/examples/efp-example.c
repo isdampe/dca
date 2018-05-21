@@ -38,7 +38,7 @@ int main()
 	else
 		printf("Timeout");
 
-/*
+
 	usleep(5000000);
 	uint8_t results[5];
 	printf("Fetching result group, waiting 45 seconds......\n");
@@ -54,7 +54,7 @@ int main()
 		printf("Reset!\n");
 	else
 		printf("Timeout resetting\n");
-*/
+
 	i2c_close(&slave);
 
 	return 0;

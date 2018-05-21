@@ -12,7 +12,7 @@ int main()
 	int i = 0, max = 20, step = 5;
 	int mp = 0;
 
-	status = i2c_init(&slave, "/dev/i2c-1", 0x10);
+	status = i2c_init(&slave, "/dev/i2c-1", 0x50, I2C_HW_MBED);
 	if (status != I2C_STATUS_OK)
 	{
 		printf("Fatal I2C error: %s\n", i2c_get_status_str(status));
@@ -23,16 +23,15 @@ int main()
 	//Just in case an unclaimed computation exists.
 	efp_reset(&slave, 100);
 
-	for (i=0; i<max; ++i)
+	for (i=0; i<(max -2); ++i)
 	{
 		result = 0x0;
 
-		printf("Ordering i=%i: ");
+		printf("Ordering %i: ", i);
 		if (efp_order(&slave, i, 500))
 			printf("received!\n");
 		else {
 			printf("timeout!\n");
-			usleep
 			i -= 1;
 			continue;
 		}
