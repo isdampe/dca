@@ -13,15 +13,22 @@ typedef enum
 	I2C_STATUS_ERR_WRITE_REG
 } I2C_STATUS;
 
+typedef enum
+{
+	I2C_HW_PHOTON,
+	I2C_HW_MBED
+} I2C_HW;
+
 typedef struct
 {
 	char device[32];
 	uint32_t addr;
 	uint32_t fh;
 	uint8_t reg[6];
+	I2C_HW hw_type;
 } i2c_obj;
 
-I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr);
+I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const I2C_HW hw_type);
 I2C_STATUS i2c_read_reg(i2c_obj *obj);
 I2C_STATUS i2c_write_reg(i2c_obj *obj);
 I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8_t val);

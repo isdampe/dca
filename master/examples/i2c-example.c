@@ -6,7 +6,7 @@ int main()
 	i2c_obj slave;
 	I2C_STATUS status;
 
-	status = i2c_init(&slave, "/dev/i2c-1", 0x10);
+	status = i2c_init(&slave, "/dev/i2c-1", 0x50, I2C_HW_MBED);
 	if (status != I2C_STATUS_OK)
 	{
 		printf("Fatal I2C error: %s\n", i2c_get_status_str(status));
@@ -26,6 +26,7 @@ int main()
 		printf("%i: 0x%02x\n", i, slave.reg[i]);
 	}
 
+	usleep(50000);
 
 	i2c_set_reg_data(&slave, 1, 0xfa);
 	i2c_set_reg_data(&slave, 2, 0xfb);
@@ -39,6 +40,7 @@ int main()
 		return 1;
 	}
 	printf("Wrote to register\n");
+	usleep(50000);
 
 	status = i2c_read_reg(&slave);
 	if (status != I2C_STATUS_OK)
@@ -51,6 +53,18 @@ int main()
 		printf("%i: 0x%02x\n", i, slave.reg[i]);
 	}
 
+	/*
+	status = i2c_read_reg(&slave);
+	if (status != I2C_STATUS_OK)
+	{
+		printf("Fatal I2C error: %s\n", i2c_get_status_str(status));
+		return 1;
+	}
+	for (int i=0; i<6; ++i)
+	{
+		printf("%i: 0x%02x\n", i, slave.reg[i]);
+	}
+*/
 	i2c_close(&slave);
 
 	return 0;

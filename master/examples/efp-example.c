@@ -8,7 +8,7 @@ int main()
 	i2c_obj slave;
 	I2C_STATUS status;
 
-	status = i2c_init(&slave, "/dev/i2c-1", 0x10);
+	status = i2c_init(&slave, "/dev/i2c-1", 0x50, I2C_HW_MBED);
 	if (status != I2C_STATUS_OK)
 	{
 		printf("Fatal I2C error: %s\n", i2c_get_status_str(status));
@@ -18,16 +18,18 @@ int main()
 	printf("Slave connected\n");
 
 	printf("Ping...\n");
-	if (efp_ping(&slave, 100)) //100ms timeout.
+	if (efp_ping(&slave, 100000)) //100ms timeout.
 		printf("Ping received!\n");
 	else
 		printf("Timeout\n");
+
 
 	printf("Order n=100, i.e. 5*100=500-505...\n");
 	if (efp_order(&slave, 6, 100))
 		printf("Order received!\n");
 	else
 		printf("Timeout\n");
+	
 
 	uint8_t result;
 	printf("Checking status...\n");
@@ -36,6 +38,7 @@ int main()
 	else
 		printf("Timeout");
 
+/*
 	usleep(5000000);
 	uint8_t results[5];
 	printf("Fetching result group, waiting 45 seconds......\n");
@@ -51,7 +54,7 @@ int main()
 		printf("Reset!\n");
 	else
 		printf("Timeout resetting\n");
-
+*/
 	i2c_close(&slave);
 
 	return 0;

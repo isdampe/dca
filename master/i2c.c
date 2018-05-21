@@ -9,7 +9,7 @@
 #include <string.h>
 #include "i2c.h"
 
-I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr)
+I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const I2C_HW hw_type)
 {
 	if (strlen(device) > 31)
 		return I2C_STATUS_ERR_INVALID_DEVICE_NAME;
@@ -17,6 +17,8 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr)
 		strcpy(obj->device, device);
 
 	obj->addr = addr;
+	obj->hw_type = hw_type;
+	
 	obj->reg[0] = 0x0;
 	obj->reg[1] = 0x0;
 	obj->reg[2] = 0x0;
@@ -43,11 +45,21 @@ I2C_STATUS i2c_read_reg(i2c_obj *obj)
 	obj->reg[3] = 0x0;
 	obj->reg[4] = 0x0;
 	obj->reg[5] = 0x0;
-	if (write(obj->fh, obj->reg, 2) != 2)
-		return I2C_STATUS_ERR_WRITE_REG;
+
+	//Mbed doesn't like the start condition raised.
+	if (obj->hw_type != I2C_HW_MBED)
+	{
+		if (write(obj->fh, obj->reg, 2) != 2)
+			return I2C_STATUS_ERR_WRITE_REG;
+	}
 
 	if (read(obj->fh, obj->reg, 6) != 6)
 		return I2C_STATUS_ERR_READ_REG;
+
+	for (int i=0; i<6; ++i)
+		printf("Reg %i: 0x%02x\n\n", i, obj->reg[i]);
+
+	printf("\n");
 
 	return I2C_STATUS_OK;
 }
@@ -61,6 +73,10 @@ I2C_STATUS i2c_write_reg(i2c_obj *obj)
 	//Write the data.
 	if (write(obj->fh, obj->reg, 6) != 6)
     	return I2C_STATUS_ERR_WRITE_REG;
+
+	//mBed is slow
+	if (obj->hw_type == I2C_HW_MBED)
+		usleep(2500000);
 
 	return I2C_STATUS_OK;
 }
