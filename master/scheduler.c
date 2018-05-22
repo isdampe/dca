@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include "scheduler.h"
+#include "i2c.h"
 
 #define SIG_SLEEP_TIME_MS 50000 //50 milliseconds.
 
@@ -11,7 +12,6 @@ scheduler scheduler_create(const uint8_t num_workers, const uint32_t end_schedul
 	scheduler result;
 	result.num_workers = num_workers;
 	result.current_schedule = 0;
-	result.end_schedule = end_schedule;
 	result.slaves = calloc(num_workers, sizeof(slave *));
 	
 	for (int i=0; i<num_workers; ++i)
@@ -23,6 +23,12 @@ scheduler scheduler_create(const uint8_t num_workers, const uint32_t end_schedul
 	}
 
 	return result;
+}
+
+void scheduler_set_slave_i2c(scheduler *s, const uint8_t idx, i2c_obj *obj, char *name)
+{
+	s->slaves[idx]->obj = obj;
+	s->slaves[idx]->name = name;
 }
 
 int8_t scheduler_get_free_slave_idx(scheduler *s, uint32_t timeout_ms)

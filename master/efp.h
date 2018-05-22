@@ -10,7 +10,6 @@
 #define EFP_CMD_REGISTER_SLAVE_ACK_BYTE 0x2
 #define EFP_CMD_REGISTER_DATA_BYTE 0x3
 
-
 typedef enum
 {
 	EFP_CMD_PING = 0x0,
