@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 #include "scheduler.h"
 #include "i2c.h"
 #include "efp.h"
 
 #define WORK_STEP_SIZE 5
-#define WORK_MAX_REQUESTS 30
+#define WORK_MAX_REQUESTS 50
 #define EFP_ORDER_TIMEOUT 500
 
 static i2c_obj slave_photon, slave_mbed;
@@ -150,9 +151,16 @@ int main(int argc, char **argv)
 		check_results();
 	}
 
+	printf("All jobs have been scheduled. Waiting for remaining computations...\n");
+	while (scheduler_get_free_slave_idx(&s, 500) == -1)
+	{
+		check_results();
+		usleep(5000);
+	}
+
 	printf("Computation complete\n\n");
 	printf("pi = 3.");
-	for (int i=0; i<(WORK_STEP_SIZE * WORK_MAX_REQUESTS); ++i)
+	for (int i=0; i<((WORK_STEP_SIZE * WORK_MAX_REQUESTS) - WORK_STEP_SIZE); ++i)
 		printf("%u", results[i]);
 
 	printf("\n\nGoodbye.\n");
