@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc *.c -o bin/dca
+gcc *.c -o bin/dca -lncurses

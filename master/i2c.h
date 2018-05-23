@@ -34,5 +34,6 @@ I2C_STATUS i2c_write_reg(i2c_obj *obj);
 I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8_t val);
 void i2c_close(i2c_obj *obj);
 const char *i2c_get_status_str(const I2C_STATUS status);
+void i2c_reg_to_string(const i2c_obj *obj, char *dest);
 
 #endif

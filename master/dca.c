@@ -2,19 +2,47 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include "scheduler.h"
 #include "i2c.h"
+#include "tui.h"
 #include "efp.h"
+#include "dca.h"
+#include "log.h"
 
-#define WORK_STEP_SIZE 5
-#define WORK_MAX_REQUESTS 50
-#define EFP_ORDER_TIMEOUT 500
+static void log_render()
+{
+	char str_buffer[100];
 
-static i2c_obj slave_photon, slave_mbed;
-static I2C_STATUS status;
-static scheduler s;
-static uint8_t results[WORK_STEP_SIZE * WORK_MAX_REQUESTS];
-static uint8_t jobs[WORK_MAX_REQUESTS];
+	tui_print_col(&mngr, 1, 0, "System");
+	for (int i=0; i<DCA_LOG_MAX_LINES; ++i)
+		tui_print_col(&mngr, 1, i + 2, system_log[i]);
+
+	
+	tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 3, "--------------------------");
+	sprintf(str_buffer, "Progress: %.02f percent", ((float)s.current_schedule / (float)WORK_MAX_REQUESTS) * 100);
+	tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 5, str_buffer);
+
+	for (int i=0; i<2; ++i)
+	{
+		sprintf(str_buffer, "Solved (%s): %i", i == 0 ? "photon" : "mbed", solved_by[i]);
+		tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 6 + 2 * i, str_buffer);
+		sprintf(str_buffer, "Errors (%s): %i", i == 0 ? "photon" : "mbed", error_by[i]);
+		tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 7 + 2 * i, str_buffer);
+	}
+	
+	tui_print_col(&mngr, 2, 0, "Result (digits of Pi)");
+	for (int i=0; i<DCA_LOG_MAX_LINES; ++i)
+		tui_print_col(&mngr, 2, i + 2, results_log[i]);
+
+	tui_print_col(&mngr, 3, 0, "I2C regis.  A  B  C  D  E");
+	tui_print_col(&mngr, 3, 1, "-------------------------");
+	for (int i=0; i<DCA_LOG_MAX_LINES; ++i)
+		tui_print_col(&mngr, 3, i + 2, i2c_log[i]);
+
+	tui_print_borders(&mngr);
+	refresh();
+}
 
 void setup_jobs()
 {
@@ -24,17 +52,19 @@ void setup_jobs()
 
 bool setup_i2c_slaves()
 {
-	status = i2c_init(&slave_photon, "/dev/i2c-1", 0x10, I2C_HW_PHOTON);
+	status = i2c_init(&slave_photon, "/dev/i2c-1", DCA_HW_ADDR_PHOTON, I2C_HW_PHOTON);
 	if (status != I2C_STATUS_OK)
 	{
-		printf("Fatal I2C error on photon: %s\n", i2c_get_status_str(status));
+		log_append(system_log, "Fatal I2C error on photon:");
+		log_append(system_log, i2c_get_status_str(status));
 		return false;
 	}
 
-	status = i2c_init(&slave_mbed, "/dev/i2c-1", 0x50, I2C_HW_MBED);
+	status = i2c_init(&slave_mbed, "/dev/i2c-1", DCA_HW_ADDR_MBED, I2C_HW_MBED);
 	if (status != I2C_STATUS_OK)
 	{
-		printf("Fatal I2C error on mbed: %s\n", i2c_get_status_str(status));
+		log_append(system_log, "Fatal I2C error on mbed:");
+		log_append(system_log, i2c_get_status_str(status));
 		return false;
 	}
 
@@ -53,16 +83,15 @@ bool setup_scheduler()
 int job_get_next()
 {
 	for (int i=0; i<WORK_MAX_REQUESTS; ++i)
-	{
 		if (jobs[i] == 0x0)
 			return i;
-	}
 
 	return -1;
 }
 
 void auto_dispatch_work()
 {
+	char str_buffer[100];
 	int8_t current_slave = scheduler_get_free_slave_idx(&s, 500);
 	slave *sl;
 
@@ -75,18 +104,33 @@ void auto_dispatch_work()
 
 		//Reset first.
 		efp_reset(sl->obj, 100);
+		
+		str_buffer[0] = '\0';
+		sprintf(str_buffer, "Reset 0x%02x: ", sl->obj->addr);
+		i2c_reg_to_string(sl->obj, str_buffer);
+		log_append(i2c_log, str_buffer);
 
 		//Create work order.
 		if (! efp_order(sl->obj, current_job, EFP_ORDER_TIMEOUT))
 		{
-			printf("Timeout ordering %s to compute from %i\n", sl->name, current_job);
+			sprintf(str_buffer, "Timeout ordering %s to compute from %i", sl->name, current_job);
+			log_append(system_log, str_buffer);
 			scheduler_free_slave(sl);
+			
+			error_by[(sl->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
 			return;
 		}
 
+		str_buffer[0] = '\0';
+		sprintf(str_buffer, "Order 0x%02x: ", sl->obj->addr);
+		i2c_reg_to_string(sl->obj, str_buffer);
+		log_append(i2c_log, str_buffer);
+
+
 		sl->current_idx = current_job;
 
-		printf("Ordered %s to compute from start index %i\n", sl->name, current_job);
+		sprintf(str_buffer, "Ordered %s to compute from start index %i\n", sl->name, current_job);
+		log_append(system_log, str_buffer);
 		s.current_schedule++;
 		jobs[current_job] = 0x1;
 	}
@@ -94,6 +138,7 @@ void auto_dispatch_work()
 
 void check_results()
 {
+	char str_buffer[100]; char str_concat_buffer[2];
 	for (int8_t i=0; i<s.num_workers; ++i)
 	{
 		if (! s.slaves[i]->busy)
@@ -103,63 +148,105 @@ void check_results()
 
 		if (efp_status(s.slaves[i]->obj, &result, 5000) && result == WORK_STEP_SIZE)
 		{
-			printf("The %s has finished\n", s.slaves[i]->name);
+			sprintf(str_buffer, "The %s has finished\n", s.slaves[i]->name);
+			log_append(system_log, str_buffer);
 
 			uint8_t step_results[WORK_STEP_SIZE];
+
 			if (efp_result_range(s.slaves[i]->obj, step_results, 1, WORK_STEP_SIZE, 100))
 			{
 				uint32_t idx = (s.slaves[i]->current_idx * WORK_STEP_SIZE);
+				sprintf(str_buffer, "Job 0x%02x: ", s.slaves[i]->current_idx);
 				for (uint8_t x=0; x<WORK_STEP_SIZE; ++x)
+				{
 					results[idx + x] = step_results[x];
+					sprintf(str_concat_buffer, "%i", step_results[x]);
+					strcat(str_buffer, str_concat_buffer);
+				}
+				log_append(results_log, str_buffer);
 
 				//Free up the slave.
 				efp_reset(s.slaves[i]->obj, 100);
 				scheduler_free_slave(s.slaves[i]);
+
+				//Solve stats.
+				solved_by[(s.slaves[i]->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
+
+				str_buffer[0] = '\0';
+				sprintf(str_buffer, "Reset 0x%02x: ", s.slaves[i]->obj->addr);
+				i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
+				log_append(i2c_log, str_buffer);
 			}
 			else 
 			{
-				printf("An error occured fetching results from %s. Releasing to queue\n", s.slaves[i]->name);
+				sprintf(str_buffer, "An error occured fetching results from %s. Releasing to queue\n", s.slaves[i]->name);
+				log_append(system_log, str_buffer);
 				jobs[s.slaves[i]->current_idx] = 0x0;
+
 				efp_reset(s.slaves[i]->obj, 100);
 				scheduler_free_slave(s.slaves[i]);
-			}
 
-			printf("Status: %i / %i\n", s.current_schedule, WORK_MAX_REQUESTS);
+				error_by[(s.slaves[i]->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
+
+				str_buffer[0] = '\0';
+				sprintf(str_buffer, "Reset 0x%02x: ", s.slaves[i]->obj->addr);
+				i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
+				log_append(i2c_log, str_buffer);
+			}
+			str_buffer[0] = '\0';
+			sprintf(str_buffer, "Resu. 0x%02x: ", s.slaves[i]->obj->addr);
+			i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
+			log_append(i2c_log, str_buffer);
+
+			sprintf(str_buffer, "Status: %i / %i\n", s.current_schedule, WORK_MAX_REQUESTS);
+			log_append(system_log, str_buffer);
 		}
+
+		str_buffer[0] = '\0';
+		sprintf(str_buffer, "Stat. 0x%02x: ", s.slaves[i]->obj->addr);
+		i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
+		log_append(i2c_log, str_buffer);
+
 		usleep(10000);
 
 	}
-
 }
 
-int main(int argc, char **argv)
+int dca_main()
 {
-	printf("Setting up jobs...\n");
+	mngr = tui_create_mgr(3);
+	tui_print_borders(&mngr);
+
+	//log_append(system_log, "hello world");
+	log_append(system_log, "Setting up jobs");
+
 	setup_jobs();
 	
-	printf("Setting up I2C devices...\n");
+	log_append(system_log, "Setting up I2C devices");
 	if (! setup_i2c_slaves())
 		return 1;
 
-	printf("Creating scheduler...\n");
+	log_append(system_log, "Creating scheduler");
 	if (! setup_scheduler())
 		return 1;
 
 	while (job_get_next() > -1)
 	{
+		log_render();
 		auto_dispatch_work();
 		check_results();
 	}
 
-	printf("All jobs have been scheduled. Waiting for remaining computations...\n");
+	log_append(system_log, "All jobs have been scheduled. Waiting for remaining computations");
 	while (scheduler_get_free_slave_idx(&s, 500) == -1)
 	{
+		log_render();
 		check_results();
 		usleep(5000);
 	}
 
-	printf("Computation complete\n\n");
-	printf("pi = 3.");
+	log_append(system_log, "Computation complete\n");
+	log_append(system_log, "pi = ");
 	for (int i=0; i<((WORK_STEP_SIZE * WORK_MAX_REQUESTS) - WORK_STEP_SIZE); ++i)
 		printf("%u", results[i]);
 

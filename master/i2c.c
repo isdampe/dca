@@ -125,3 +125,15 @@ const char *i2c_get_status_str(const I2C_STATUS status)
 			break;
 	}
 }
+
+void i2c_reg_to_string(const i2c_obj *obj, char *dest)
+{
+	char buffer[61]; char sbuffer[5];
+	buffer[0] = '\0';
+	sbuffer[0] = '\0';
+	
+	for (uint8_t i=0; i<6; sprintf(sbuffer, "%02x ", obj->reg[i++]))
+		strcat(buffer, sbuffer);
+	strcat(dest, buffer);
+	
+}
