@@ -15,5 +15,6 @@ void tui_print_debug();
 tui_mngr tui_create_mgr(int col_count);
 void tui_print_col(const tui_mngr *mngr, const int col_number, const int line_number, const char *str);
 void tui_print_borders(const tui_mngr *mngr);
+void tui_end();
 
 #endif

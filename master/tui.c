@@ -41,3 +41,8 @@ void tui_print_borders(const tui_mngr *mngr)
 		for (int x=0; x<mngr->window_height; ++x)
 			mvprintw(x, (i * mngr->col_width) + mngr->col_width -2, "|");
 }
+
+void tui_end()
+{
+	endwin();
+}

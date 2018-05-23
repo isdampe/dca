@@ -44,6 +44,20 @@ static void log_render()
 	refresh();
 }
 
+void dca_reset()
+{
+	for (int i=0; i<2; ++i)
+	{
+		error_by[i] = 0;
+		solved_by[i] = 0;
+		checksum_counter[i] = 0;
+	}
+	for (int i=0; i<WORK_STEP_SIZE * WORK_MAX_REQUESTS; ++i)
+		results[i] = 0;
+	for (int i=0; i<WORK_MAX_REQUESTS; ++i)
+		jobs[i] = 0;
+}
+
 void setup_jobs()
 {
 	for (int i=0; i<WORK_MAX_REQUESTS; ++i)
@@ -133,6 +147,7 @@ void auto_dispatch_work()
 		log_append(system_log, str_buffer);
 		s.current_schedule++;
 		jobs[current_job] = 0x1;
+		checksum_counter[(sl->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1] = 0;
 	}
 }
 
@@ -181,17 +196,7 @@ void check_results()
 			{
 				sprintf(str_buffer, "An error occured fetching results from %s. Releasing to queue\n", s.slaves[i]->name);
 				log_append(system_log, str_buffer);
-				jobs[s.slaves[i]->current_idx] = 0x0;
-
-				efp_reset(s.slaves[i]->obj, 100);
-				scheduler_free_slave(s.slaves[i]);
-
-				error_by[(s.slaves[i]->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
-
-				str_buffer[0] = '\0';
-				sprintf(str_buffer, "Reset 0x%02x: ", s.slaves[i]->obj->addr);
-				i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
-				log_append(i2c_log, str_buffer);
+				dca_cancel_job(s.slaves[i]);
 			}
 			str_buffer[0] = '\0';
 			sprintf(str_buffer, "Resu. 0x%02x: ", s.slaves[i]->obj->addr);
@@ -200,6 +205,16 @@ void check_results()
 
 			sprintf(str_buffer, "Status: %i / %i\n", s.current_schedule, WORK_MAX_REQUESTS);
 			log_append(system_log, str_buffer);
+		}
+		else
+		{
+			checksum_counter[(s.slaves[i]->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
+			if (checksum_counter[(s.slaves[i]->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1] > DCA_CHECKSUM_OVERCOUNT)
+			{
+				sprintf(str_buffer, "Timed out waiting for result with slave %s. Releasing job to queue.", s.slaves[i]->name);
+				log_append(system_log, str_buffer);
+				dca_cancel_job(s.slaves[i]);
+			}
 		}
 
 		str_buffer[0] = '\0';
@@ -212,10 +227,29 @@ void check_results()
 	}
 }
 
+void dca_cancel_job(slave *sl)
+{
+	char str_buffer[100];
+
+	jobs[sl->current_idx] = 0x0;
+
+	efp_reset(sl->obj, 100);
+	scheduler_free_slave(sl);
+
+	error_by[(sl->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
+
+	str_buffer[0] = '\0';
+	sprintf(str_buffer, "Reset 0x%02x: ", sl->obj->addr);
+	i2c_reg_to_string(sl->obj, str_buffer);
+	log_append(i2c_log, str_buffer);
+}
+
 int dca_main()
 {
 	mngr = tui_create_mgr(3);
 	tui_print_borders(&mngr);
+
+	dca_reset();
 
 	//log_append(system_log, "hello world");
 	log_append(system_log, "Setting up jobs");
@@ -245,8 +279,10 @@ int dca_main()
 		usleep(5000);
 	}
 
-	log_append(system_log, "Computation complete\n");
-	log_append(system_log, "pi = ");
+	tui_end();
+
+	printf("Computation complete\n");
+	printf("Pi = 3.");
 	for (int i=0; i<((WORK_STEP_SIZE * WORK_MAX_REQUESTS) - WORK_STEP_SIZE); ++i)
 		printf("%u", results[i]);
 
