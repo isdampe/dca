@@ -9,8 +9,17 @@
 #include <string.h>
 #include "i2c.h"
 
+/**
+ * Initialises an i2c object.
+ * @param  obj     A pointer to the i2c_obj struct.
+ * @param  device  The name of the device.
+ * @param  addr    The I2C hardware address of the device (8-bit).
+ * @param  hw_type The hardware type of the device. Must be set.
+ * @return         An I2C_STATUS code.
+ */
 I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const I2C_HW hw_type)
 {
+	//We only have 32 bytes to store the device name.
 	if (strlen(device) > 31)
 		return I2C_STATUS_ERR_INVALID_DEVICE_NAME;
 	else
@@ -18,7 +27,8 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const
 
 	obj->addr = addr;
 	obj->hw_type = hw_type;
-	
+
+	//Reset the registers.
 	obj->reg[0] = 0x0;
 	obj->reg[1] = 0x0;
 	obj->reg[2] = 0x0;
@@ -26,9 +36,11 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const
 	obj->reg[4] = 0x0;
 	obj->reg[5] = 0x0;
 
+	//Request device access from the kernel.
 	if ((obj->fh = open(obj->device, O_RDWR)) < 0)
 		return I2C_STATUS_ERR_OPEN;
 
+	//Set I2C slave mode on the file descriptor.
 	if (ioctl(obj->fh, I2C_SLAVE, obj->addr) < 0)
 		return I2C_STATUS_ERR_IOCTL;
 
@@ -36,6 +48,11 @@ I2C_STATUS i2c_init(i2c_obj *obj, const char *device, const uint32_t addr, const
 
 }
 
+/**
+ * Reads the registers of a given slave i2c_obj.
+ * @param  obj A pointer to the i2c_obj.
+ * @return     An I2C_STATUS code.
+ */
 I2C_STATUS i2c_read_reg(i2c_obj *obj)
 {
 	//Set register to read to 0x0.
@@ -47,23 +64,24 @@ I2C_STATUS i2c_read_reg(i2c_obj *obj)
 	obj->reg[5] = 0x0;
 
 	//Mbed doesn't like the start condition raised.
+	//This could be clock-speed related or a bug in the I2C slave
+	//driver for Mbed.
 	if (obj->hw_type != I2C_HW_MBED)
 	{
 		if (write(obj->fh, obj->reg, 2) != 2)
 			return I2C_STATUS_ERR_WRITE_REG;
 	}
-
 	if (read(obj->fh, obj->reg, 6) != 6)
 		return I2C_STATUS_ERR_READ_REG;
-
-	//for (int i=0; i<6; ++i)
-	//	printf("Reg %i: 0x%02x\n\n", i, obj->reg[i]);
-
-	//printf("\n");
 
 	return I2C_STATUS_OK;
 }
 
+/**
+ * Writes the values of an i2c_obj register to the slaves registers.
+ * @param  obj A pointer to the i2c_obj
+ * @return     An I2C_STATUS code.
+ */
 I2C_STATUS i2c_write_reg(i2c_obj *obj)
 {
 	//Set register select
@@ -74,13 +92,21 @@ I2C_STATUS i2c_write_reg(i2c_obj *obj)
 	if (write(obj->fh, obj->reg, 6) != 6)
     	return I2C_STATUS_ERR_WRITE_REG;
 
-	//mBed is slow
+	//Mbed is unreliable in testing without giving it time to process.
+	//Again, could be clock-speed related...
 	if (obj->hw_type == I2C_HW_MBED)
-		usleep(250000); //Update one zero if trouble...
+		usleep(250000);
 
 	return I2C_STATUS_OK;
 }
 
+/**
+ * Sets a given register byte number with a given value on an i2c_obj.
+ * @param  obj         A pointer to the i2c_obj.
+ * @param  byte_number The byte number to set in the register.
+ * @param  val         The 8-bit value to set.
+ * @return             An I2C_STATUS code.
+ */
 I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8_t val)
 {
 	if (byte_number > 4)
@@ -90,11 +116,20 @@ I2C_STATUS i2c_set_reg_data(i2c_obj *obj, const uint8_t byte_number, const uint8
 	return I2C_STATUS_OK;
 }
 
+/**
+ * Closes off the I2C connection from kernel.
+ * @param obj A pointer to the i2c_obj.
+ */
 void i2c_close(i2c_obj *obj)
 {
 	close(obj->fh);
 }
 
+/**
+ * Converts a given I2C_STATUS value to a user-friendly string of characters.
+ * @param  status The I2C_STATUS code.
+ * @return        A readable string of characters.
+ */
 const char *i2c_get_status_str(const I2C_STATUS status)
 {
 	switch (status)
@@ -126,14 +161,19 @@ const char *i2c_get_status_str(const I2C_STATUS status)
 	}
 }
 
+/**
+ * Converts a given i2c_obj's registers to a string of characters in hexidecimal.
+ * @param obj  A pointer to the i2c_obj.
+ * @param dest The location to store the string of characters.
+ */
 void i2c_reg_to_string(const i2c_obj *obj, char *dest)
 {
 	char buffer[61]; char sbuffer[5];
 	buffer[0] = '\0';
 	sbuffer[0] = '\0';
-	
+
 	for (uint8_t i=0; i<6; sprintf(sbuffer, "%02x ", obj->reg[i++]))
 		strcat(buffer, sbuffer);
 	strcat(dest, buffer);
-	
+
 }

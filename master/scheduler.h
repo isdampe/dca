@@ -7,6 +7,8 @@
 typedef struct {
 	uint8_t idx;
 	uint8_t addr;
+	//When gcc uses -O1 or higher optimsiations, this gets optimised out
+	//and deadlock can occur. MUST be defined volatile.
 	volatile bool busy;
 	i2c_obj *obj;
 	char *name;

@@ -10,6 +10,9 @@
 #include "dca.h"
 #include "log.h"
 
+/**
+ * Renders all logs into their appropriate columns.
+ */
 static void log_render()
 {
 	char str_buffer[100];
@@ -18,7 +21,7 @@ static void log_render()
 	for (int i=0; i<DCA_LOG_MAX_LINES; ++i)
 		tui_print_col(&mngr, 1, i + 2, system_log[i]);
 
-	
+
 	tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 3, "--------------------------");
 	sprintf(str_buffer, "Progress: %.02f percent", ((float)s.current_schedule / (float)WORK_MAX_REQUESTS) * 100);
 	tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 5, str_buffer);
@@ -30,7 +33,7 @@ static void log_render()
 		sprintf(str_buffer, "Errors (%s): %i", i == 0 ? "photon" : "mbed", error_by[i]);
 		tui_print_col(&mngr, 1, DCA_LOG_MAX_LINES + 7 + 2 * i, str_buffer);
 	}
-	
+
 	tui_print_col(&mngr, 2, 0, "Result (digits of Pi)");
 	for (int i=0; i<DCA_LOG_MAX_LINES; ++i)
 		tui_print_col(&mngr, 2, i + 2, results_log[i]);
@@ -44,6 +47,9 @@ static void log_render()
 	refresh();
 }
 
+/**
+ * Reset the DCA static values for recomputation.
+ */
 void dca_reset()
 {
 	for (int i=0; i<2; ++i)
@@ -58,12 +64,19 @@ void dca_reset()
 		jobs[i] = 0;
 }
 
+/**
+ * Ensure that the job store memory is initialised to 0x0.
+ */
 void setup_jobs()
 {
 	for (int i=0; i<WORK_MAX_REQUESTS; ++i)
 		jobs[i] = 0x0;
 }
 
+/**
+ * Create both the i2c_obj instances for Photon and Mbed.
+ * @return True if the operation succeeded, false if errors occured.
+ */
 bool setup_i2c_slaves()
 {
 	status = i2c_init(&slave_photon, "/dev/i2c-1", DCA_HW_ADDR_PHOTON, I2C_HW_PHOTON);
@@ -85,6 +98,10 @@ bool setup_i2c_slaves()
 	return true;
 }
 
+/**
+ * Setup and intialise the scheduler instance.
+ * @return True if success.
+ */
 bool setup_scheduler()
 {
 	s = scheduler_create(2, 25);
@@ -94,6 +111,10 @@ bool setup_scheduler()
 	return true;
 }
 
+/**
+ * Gets the next job in the computation session.
+ * @return The integer value of the next job index.
+ */
 int job_get_next()
 {
 	for (int i=0; i<WORK_MAX_REQUESTS; ++i)
@@ -103,6 +124,9 @@ int job_get_next()
 	return -1;
 }
 
+/**
+ * Automatically dispatches jobs to I2C slaves that are currently not busy.
+ */
 void auto_dispatch_work()
 {
 	char str_buffer[100];
@@ -118,7 +142,7 @@ void auto_dispatch_work()
 
 		//Reset first.
 		efp_reset(sl->obj, 100);
-		
+
 		str_buffer[0] = '\0';
 		sprintf(str_buffer, "Reset 0x%02x: ", sl->obj->addr);
 		i2c_reg_to_string(sl->obj, str_buffer);
@@ -130,7 +154,7 @@ void auto_dispatch_work()
 			sprintf(str_buffer, "Timeout ordering %s to compute from %i", sl->name, current_job);
 			log_append(system_log, str_buffer);
 			scheduler_free_slave(sl);
-			
+
 			error_by[(sl->obj->addr == DCA_HW_ADDR_PHOTON) ? 0 : 1]++;
 			return;
 		}
@@ -151,6 +175,10 @@ void auto_dispatch_work()
 	}
 }
 
+/**
+ * Checks all busy I2C slaves for results.
+ * If they are completed, fetches and stores the results.
+ */
 void check_results()
 {
 	char str_buffer[100]; char str_concat_buffer[2];
@@ -192,7 +220,7 @@ void check_results()
 				i2c_reg_to_string(s.slaves[i]->obj, str_buffer);
 				log_append(i2c_log, str_buffer);
 			}
-			else 
+			else
 			{
 				sprintf(str_buffer, "An error occured fetching results from %s. Releasing to queue\n", s.slaves[i]->name);
 				log_append(system_log, str_buffer);
@@ -227,6 +255,10 @@ void check_results()
 	}
 }
 
+/**
+ * Cancels a job on a given I2C slave.
+ * @param sl A pointer to the slave.
+ */
 void dca_cancel_job(slave *sl)
 {
 	char str_buffer[100];
@@ -244,6 +276,10 @@ void dca_cancel_job(slave *sl)
 	log_append(i2c_log, str_buffer);
 }
 
+/**
+ * The main entry-point for a DCA session.
+ * @return 0 on success, else 1.
+ */
 int dca_main()
 {
 	mngr = tui_create_mgr(3);
@@ -255,7 +291,7 @@ int dca_main()
 	log_append(system_log, "Setting up jobs");
 
 	setup_jobs();
-	
+
 	log_append(system_log, "Setting up I2C devices");
 	if (! setup_i2c_slaves())
 		return 1;

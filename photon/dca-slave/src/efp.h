@@ -42,7 +42,7 @@ typedef struct
 } efp_slave;
 
 void efp_slave_init(efp_slave *slave);
-void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave, uint8_t reg_addr);
+void efp_slave_parse_registers(const uint32_t reg_val, efp_slave *slave);
 void efp_dump_registers(const efp_slave *slave);
 uint32_t efp_pack_registers(const efp_slave *slave);
 void efp_set_ack(efp_slave *slave, const uint8_t value);
